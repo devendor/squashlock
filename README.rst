@@ -26,8 +26,8 @@ incoming devs set proper auth creds for their own rig in their individual squash
 
 Check it in.
 
-Keys, Logs, Links
-=================
+PATHS
+=====
 
 The "installation" is really just cloning whereever you want it to live, and optionally symlinking 
 the script to somewhere in your PATH.
@@ -51,6 +51,22 @@ provided ./keys/user-key exists realtive to the script on the machine you envoke
 $USER changes, you will have to rename the key as per-user squashlock images key off of the
 SUDO_USER environmental var with globbing.  ie: my vault is rferguson-*.squashlock etc. Of course
 you will aslo need the password, linux, openssl, bash, and sudo.
+
+Additionally a few default files are added inside of the vault.
+
+============  =========================================================
+  InVault                  Description
+============  =========================================================
+./INFO        General info from creation time.
+./.bashrc     Initial version generated automatically.
+./.pub        The RSA public key for resquashing / encrypting.
+============  =========================================================
+
+The default bashrc can be modified in the vault or overriden in skel/ contents.
+
+The public key in the vault is own by root to prevent accidental deletion. It can also be 
+regenerated from the private if needed provided if you have the password.
+
 
 EXTERNAL APP NOTE
 =================
@@ -118,7 +134,9 @@ the work in revision control without leaking any secret data or clobbering eacho
 INSTALLING
 ==========
 
-.. rubric:: requirements 
+See Paths above for detail.
+
+**Requirements:**
 * linux
 * sudo
 * bash
