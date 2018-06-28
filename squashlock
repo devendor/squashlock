@@ -105,7 +105,7 @@ setup_new_private(){
 
 re_squash_crypt(){
     # resquashes filesystem passes through pipe to encrypt
-    if `diff -rq $SHM_DIR/lower $PRIVATE_MOUNT > /dev/null 2>&1 `; then
+    if `diff --no-dererence -rq $SHM_DIR/lower $PRIVATE_MOUNT > /dev/null 2>&1 `; then
         echo No changes in filesystem.  Skipping resquash.
     else
         echo Encrypting filesystem 1>&2
@@ -129,19 +129,20 @@ clean_shm(){
         /bin/bash -i
     fi
     if ! $SKIP_CLEAN_ON_ERROR ; then
-        umount $SHM_DIR/lower &&
-        umount $SHM_DIR &&
-        umount $PIVOT_DIR || {
-           errstr="${msg}\nERROR CLEANING UP SHM $SHM_FILE"
-           ercode=$LINENO
+        for i in $PIVOT_DIR $PRIVATE_MOUNT ${SHM_DIR}/lower $SHM_DIR ; do
+            umount $i || umount --force --lasy $i || {
+               errstr="${msg}\nERROR CLEANING UP SHM $i"
+               ercode=$LINENO
+            }
+        done
+        sleep 2
+        rmdir $SHM_DIR $PIVOT_DIR ||  {
+               errstr="${msg}\nERROR removing temp directories $SHM_DIR $PIVOT_DIR"
+               ercode=$LINENO
         }
-        rmdir $SHM_DIR
-        rmdir $PIVOT_DIR
     fi
     echo ${msg:-Successfully closed squashlock fs.}
-    if [ $ercode -gt 0 ] ;then
-        exit $ercode
-    fi
+    exit $ercode
 }
 
 open_private(){
