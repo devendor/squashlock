@@ -119,11 +119,10 @@ INSTALLING
 ==========
 
 .. rubric:: requirements 
-
-  linux
-  sudo
-  bash
-  openssl
+* linux
+* sudo
+* bash
+* openssl
 
 .. code:: shell
 
