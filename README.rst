@@ -137,6 +137,7 @@ INSTALLING
 See Paths above for detail.
 
 **Requirements:**
+
 * linux
 * sudo
 * bash
