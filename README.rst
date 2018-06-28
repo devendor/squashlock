@@ -1,6 +1,8 @@
 Squashlock Vault Script
 =======================
 
+`Squashlock on github`_
+
 Squashlock is intended to run on Linux systems and provide secure locked repositories stored on
 the filesystem as encrypted squash images with per-user/per-path destinations.
 
@@ -18,16 +20,16 @@ secret images or being separated from your work.
 
 It also functions as a pretty cool demonstration of namespace, openssl, and filesystem  vudu.
 
-USE CASE
-========
+Use Case
+--------
 
 Stub out a connectivity config template for a proper test environment in the outer directory. Have
 incoming devs set proper auth creds for their own rig in their individual squashlock vaults.
 
 Check it in.
 
-PATHS
-=====
+Paths
+-----
 
 The "installation" is really just cloning whereever you want it to live, and optionally symlinking 
 the script to somewhere in your PATH.
@@ -68,15 +70,15 @@ The public key in the vault is own by root to prevent accidental deletion. It ca
 regenerated from the private if needed provided if you have the password.
 
 
-EXTERNAL APP NOTE
-=================
+External App Note
+-----------------
 
 While you have full connectivity and can run any program with any type of file in here, you can't
 be confident that a complex application isn't storing backups, histor or cache insecurely somewhere
 outside of the file in the squashlock path without doing your own research.
 
-USAGE
-=====
+Usage
+-----
 
 .. code:: bash
 
@@ -131,8 +133,8 @@ Multiple users can have separate squashlocked files in the directory which is id
 collaborating on a project who may have different test enviroment settings they want to keep with
 the work in revision control without leaking any secret data or clobbering eachothers settings.
 
-INSTALLING
-==========
+Installation
+------------
 
 See Paths above for detail.
 
@@ -152,5 +154,8 @@ See Paths above for detail.
   ln -s /opt/squaslock/squashlock /usr/local/bin
   mkdir squashlock/skel
   echo DEFAULT_THING > squashlock/skel/put_this_in_new_vaults
+
+
+.. _Squashlock on github: https://github.com/devendor/squashlock
 
 
