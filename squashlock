@@ -130,10 +130,12 @@ clean_shm(){
     fi
     if ! $SKIP_CLEAN_ON_ERROR ; then
         for i in $PIVOT_DIR $PRIVATE_MOUNT ${SHM_DIR}/lower $SHM_DIR ; do
-            umount $i || umount --force --lasy $i || {
-               errstr="${msg}\nERROR CLEANING UP SHM $i"
-               ercode=$LINENO
-            }
+            if `grep -q $i /proc/mounts` ; then
+                umount $i || umount --force --lazy $i || {
+                   errstr="${msg}\nERROR CLEANING UP SHM $i"
+                   ercode=$LINENO
+                }
+            fi
         done
         sleep 2
         rmdir $SHM_DIR $PIVOT_DIR ||  {
