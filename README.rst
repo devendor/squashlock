@@ -35,13 +35,14 @@ the script to somewhere in your PATH.
 The derefernced path to the script determines the top dir for all support files and keys.
 
 ============  =========================================================
-    Path                  Description
+   Path                  Description
 ============  =========================================================
 ./squashlock  The script. Other paths are realative to this.
 ./keys/       Password protected private keys for vaults.
 ./history/    per vault log files show size, path, access, permissions
 ./links/      Links to the last known location of the vault.
 ./skel/       Contents Copied into new vaults at inception if it exists
+============  =========================================================
 
 By default, keys are stored as root  ./keys realative to the location of the squashlock script.
 
