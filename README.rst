@@ -101,6 +101,8 @@ USAGE
   rferguson@mendota $ ls
   rferguson@mendota:~/secretPlace$ ls
   in_here  rferguson_secretPlace_d1278c0c70c0077818c1c0419588795e.squashlocked
+  rferguson@mendota $ cat in_here
+  initial_content
 
 
 Locked squash vaults have encrypted filesystems in the form of 
@@ -113,41 +115,26 @@ Multiple users can have separate squashlocked files in the directory which is id
 collaborating on a project who may have different test enviroment settings they want to keep with
 the work in revision control without leaking any secret data or clobbering eachothers settings.
 
-REQUIREMENTS
-============
-
-Linux
-Sudo
-Bash
-openssl
-
 INSTALLING
 ==========
 
-OPTION 1
---------
+==============
+ REQUIREMENTS
+==============
+linux
+sudo
+bash
+openssl
+==============
 
-chdir /opt # or whereever
-git clone ..... tbd
-chown -R root.root squashlock
-# optional
-ln -s /opt/squaslock/squashlock /opt/bin/
+.. code:: shell
 
-OPTION 2
---------
-
-squashlock uses the install path to decide where to put encryption keys and the skeloton directory
-for new squashlocks but you can change that.
-
- #. copy the squashlock script to wherever you want to run it from
- #. Modify paths to key and skeloton data in script vars
-
-Create files under install/path/skel
-------------------------------------
-
-Any files placed in the directory referred to by the SKEL variable ./skel by default act as a
-skeloton for new vaults in addition to any existing contents of the target directory.
-
-The target directory files are not removed or changed.
+  chdir /opt # or whereever
+  git clone https://github.com/devendor/squashlock.git
+  chown -R root.root squashlock
+  # optional
+  ln -s /opt/squaslock/squashlock /usr/local/bin
+  mkdir squashlock/skel
+  echo DEFAULT_THING > squashlock/skel/put_this_in_new_vaults
 
 
