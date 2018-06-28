@@ -118,14 +118,12 @@ the work in revision control without leaking any secret data or clobbering eacho
 INSTALLING
 ==========
 
-==============
- REQUIREMENTS
-==============
-linux
-sudo
-bash
-openssl
-==============
+.. rubric:: requirements 
+
+  linux
+  sudo
+  bash
+  openssl
 
 .. code:: shell
 
