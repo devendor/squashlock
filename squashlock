@@ -7,7 +7,7 @@ if [ $(stat -L -c %u $0) -gt 0 ] || [ $(stat -L -c %g $0) -gt 100 ] ; then
 fi
 
 if ! `stat -L -c %a $0 | grep -q '^[75][540][0]'`; then
-    echo -e "Security error:  Script permissions error. Please run\nt sudo chmod g-w,o-rwx $0"
+    echo -e "Security error:  Script permissions error. Please run\n\tsudo chmod g-w,o-rwx $0"
     exit 1
 fi
 

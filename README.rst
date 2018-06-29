@@ -150,6 +150,7 @@ See Paths above for detail.
   chdir /opt # or whereever
   git clone https://github.com/devendor/squashlock.git
   chown -R root.root squashlock
+  chmod g-w,o-rwx squashlock/squashlock
   # optional
   ln -s /opt/squaslock/squashlock /usr/local/bin
   mkdir squashlock/skel
