@@ -2,12 +2,12 @@
 # set -x ## Debugging will echo secrets
 
 if [ $(stat -L -c %u $0) -gt 0 ] || [ $(stat -L -c %g $0) -gt 100 ] ; then
-    echo "Security Error: Script should be owned by user/group root."
+    echo "Security Error: Script should be owned by user/group root.\n\tsudo chown root.root $0"
     exit 1
 fi
 
 if ! `stat -L -c %a $0 | grep -q '^[75][540][0]'`; then
-    echo "Security error:  Script permissions error. Please chmod g-w o-rwx $0"
+    echo -e "Security error:  Script permissions error. Please run\nt sudo chmod g-w,o-rwx $0"
     exit 1
 fi
 
@@ -217,7 +217,7 @@ done
 open_private &&
 /usr/bin/env -u SUDO_USER -u SUDO_UID -u SUDO_GID -u SUDO_COMMAND \
    --chdir $PRIVATE_MOUNT LOGNAME=${RUSER} TMOUT=${TIMEOUT:-0} CASUBSHELL=true HOME=$PRIVATE_MOUNT USER=$RUSER \
-   $RUNUSER_CMD
+   $RUN_USER_CMD
 close_private
 
 stat -Lc "$(date +%s), mtime=%Y, u/g/m=%u/%g/%a, size=%s, path=${PRIVATE_MOUNT}"  \
