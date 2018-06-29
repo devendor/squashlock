@@ -97,7 +97,7 @@ setup_new_private(){
 
 re_squash_crypt(){
     # resquashes filesystem passes through pipe to encrypt
-    if `diff --no-dererence -rb $SHM_DIR/lower $PRIVATE_MOUNT 1>&2 `; then
+    if `diff --no-dereference -rb $SHM_DIR/lower $PRIVATE_MOUNT 1>&2 `; then
         echo No changes in filesystem.  Skipping resquash.
     else
         echo Encrypting filesystem 1>&2
