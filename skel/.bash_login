@@ -1,0 +1,15 @@
+# Set AUTOGIT=true for automatic in-vault revision control.
+AUTOGIT=true
+SQHOME=$HOME
+RHOME=$(eval echo ~$USER)
+HOME=$RHOME source ${RHOME}/.bashrc
+PATH=${SQHOME}/bin:$PATH
+HISTFILE=${RHOME}/.bash_history
+PS1="($(basename $HOME))${PS1}"
+LESSHISTFILE="-"
+export AUTOGIT LESSHISTFILE RHOME SQHOME
+
+# run some programs with real $HOME to take advantage of local user config.
+alias runhome="env HOME=${RHOME}"
+alias vim="runhome vim"
+alias git="runhome git"

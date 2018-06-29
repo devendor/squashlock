@@ -57,6 +57,7 @@ SKIP_CLEAN_ON_ERROR=false
 TIMEOUT=900
 CLOSE_WAIT=30
 BREAK_ON_ERROR=false
+RUN_USER_CMD="/usr/sbin/sudo -e -u ${RUSER} /bin/bash -l"
 
 
 read -r -d '' INFO_TAG <<END_ID_FILE
@@ -69,15 +70,6 @@ read -r -d '' INFO_TAG <<END_ID_FILE
 # SFKEY:          ${SFKEY}
 # PRIVATE_MOUNT:  ${PRIVATE_MOUNT}
 END_ID_FILE
-
-read -r -d '' INITIAL_BASHRC <<'END_INITIAL_BASHRC'
-# \$HOME aka ~ expands to $PRIVATE_MOUNT in this shell
-RHOME=$(getent passwd $USER | cut -d: -f 6)
-PATH=${HOME}/bin:$PATH
-HISTFILE=${RHOME}/.bash_history
-PS1="($(basename $HOME))${PS1}"
-
-END_INITIAL_BASHRC
 
 setup_new_private(){
     # Creates new rsa keypair
@@ -163,7 +155,6 @@ open_private(){
         echo "$INFO_TAG" >> $SHM_DIR/upper/INFO
         [ -d ${SKEL:-NULL} ] && cp -a $SKEL/. $SHM_DIR/upper/. 2>/dev/null
         cp -a $(ls -a | egrep -v '^(\.|\.\.|.*squashlocked.*)$') ${SHM_DIR}/upper/
-        [ -f ${SHM_DIR}/upper/.bashrc ] || echo -e "${INFO_TAG}${INITIAL_BASHRC}" > $SHM_DIR/upper/.bashrc
         chown -R ${RUID}:${RGID} ${SHM_DIR}/upper/
         cp -a $SFPUB $SHM_DIR/upper/.pubkey
         mksquashfs $SHM_DIR/work $SHM_FILE ||
@@ -226,7 +217,7 @@ done
 open_private &&
 /usr/bin/env -u SUDO_USER -u SUDO_UID -u SUDO_GID -u SUDO_COMMAND \
    --chdir $PRIVATE_MOUNT LOGNAME=${RUSER} TMOUT=${TIMEOUT:-0} CASUBSHELL=true HOME=$PRIVATE_MOUNT USER=$RUSER \
-   /sbin/runuser -ps /bin/bash $RUSER
+   $RUNUSER_CMD
 close_private
 
 stat -Lc "$(date +%s), mtime=%Y, u/g/m=%u/%g/%a, size=%s, path=${PRIVATE_MOUNT}"  \
