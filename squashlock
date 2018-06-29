@@ -57,7 +57,7 @@ SKIP_CLEAN_ON_ERROR=false
 TIMEOUT=900
 CLOSE_WAIT=30
 BREAK_ON_ERROR=false
-RUN_USER_CMD="/usr/sbin/sudo -e -u ${RUSER} /bin/bash -l"
+RUN_USER_CMD="/usr/bin/sudo -E -u ${RUSER} /bin/bash -l"
 
 
 read -r -d '' INFO_TAG <<END_ID_FILE
