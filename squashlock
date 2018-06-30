@@ -136,7 +136,7 @@ clean_shm(){
         }
     fi
     echo ${msg:-Successfully closed squashlock fs.}
-    exit $ercode
+    return $ercode
 }
 
 open_private(){
@@ -220,9 +220,11 @@ open_private &&
    $RUN_USER_CMD
 close_private
 
-stat -Lc "$(date +%s), mtime=%Y, u/g/m=%u/%g/%a, size=%s, path=${PRIVATE_MOUNT}"  \
-    ${PRIVATE_MOUNT}/${ID} >> $SFHIST
-ln -sf $PRIVATE_MOUNT/${ID} $IMG_LINK_PATH/
+exit_code=$?
+
+stat -Lc "$(date +%s), mtime=%Y, u/g/m=%u/%g/%a, size=%s, path=${PRIVATE_MOUNT}, "  \
+    "${PRIVATE_MOUNT}/${ID}, exit=${exit_code}" >> $SFHIST
+ln -sf ${PRIVATE_MOUNT}/${ID} $IMG_LINK_PATH/
 
 ${EXTERNAL_STORAGE_TEARDOWN_CMD:-true} || {
     echo "WARNING: EXTERNAL_TEARDOWN_CMD FAILED. STORAGE MAY STILL BE MOUNTED." 
@@ -230,4 +232,5 @@ ${EXTERNAL_STORAGE_TEARDOWN_CMD:-true} || {
     exit 4
 }
 
+exit $exit_code
 
