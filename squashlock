@@ -222,8 +222,8 @@ close_private
 
 exit_code=$?
 
-stat -Lc "$(date +%s), mtime=%Y, u/g/m=%u/%g/%a, size=%s, path=${PRIVATE_MOUNT}, "  \
-    "${PRIVATE_MOUNT}/${ID}, exit=${exit_code}" >> $SFHIST
+stat -Lc "$(date +%s), mtime=%Y, u/g/m=%u/%g/%a, size=%s, path=${PRIVATE_MOUNT}, exit=${exit_code}"  \
+    "${PRIVATE_MOUNT}/${ID}"  >> $SFHIST
 ln -sf ${PRIVATE_MOUNT}/${ID} $IMG_LINK_PATH/
 
 ${EXTERNAL_STORAGE_TEARDOWN_CMD:-true} || {
