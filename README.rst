@@ -7,26 +7,33 @@ Squashlock is intended to run on Linux systems and provide secure locked reposit
 the filesystem as encrypted squash images with per-user/per-path destinations.
 
 Filesystem and pid namespace protection provides a semi-containorized shell with access to your ipc
-network and filesystem resources but not allowing access to it's own private mount and pid space.
+network and filesystem resources but not allowing access to it's own private mount pid space and
+environment. This is accomplished via namespaces common to docker, lxd, lxc etc, but in a targeted
+way to allow full access to everything else while protecting access to private resources.
 
-Squash filestem only exists on tmpfs memory in the container shell and it's children and is
-made writeable via an overlay also in memory.
+Unencrypted qquash filestem only exists in a mnt namespace segmented tmpfs memory backed directory
+in the container shell and is passed onto it's children. It is made writeable via an overlay, also
+tmpfs/memory to prevent unecrypted data from ever touching disk.
 
-When you exit the shell, the changes are re-squashed and encrypted via openssl rsa/aes256 smime.
+When you exit the shell, the contents are checked for changes and re-squashed/encrypted if
+via openssl rsa/aes256 smime if any changes have occured.  The re-squash process also keeps one
+backup copy of the image before changes for safety.
 
 Keys are stored as root under the squashlock install location.  Content remains securely on the
 users filesystem where it can be pushed to revision control without conflicting with any one elses
 secret images or being separated from your work.
 
-It also functions as a pretty cool demonstration of namespace, openssl, and filesystem  vudu.
+It also functions as a pretty cool demonstration of namespace, openssl, and filesystem  vudu. On
+another note...  Try lsns while you have chrome running, namespaces are not just for containers!
 
 Use Case
 --------
 
 Stub out a connectivity config template for a proper test environment in the outer directory. Have
-incoming devs set proper auth creds for their own rig in their individual squashlock vaults.
+incoming devs set proper auth creds for their own rig in their individual squashlock vaults. Since
+images are tagged by USER, individual settings can coexist securely in a shared git repository.
 
-Check it in.
+Check it in and unsquash it before starting your test processes.
 
 Paths
 -----
@@ -36,15 +43,17 @@ the script to somewhere in your PATH.
 
 The derefernced path to the script determines the top dir for all support files and keys.
 
-============  =========================================================
+===================  =========================================================
    Path                  Description
-============  =========================================================
-./squashlock  The script. Other paths are realative to this.
-./keys/       Password protected private keys for vaults.
-./history/    per vault log files show size, path, access, permissions
-./links/      Links to the last known location of the vault.
-./skel/       Contents Copied into new vaults at inception if it exists
-============  =========================================================
+===================  =========================================================
+./squashlock         The script. Other paths are realative to this.
+./keys/              Password protected private keys for vaults.
+./history/           per vault log files show size, path, access, permissions
+./links/             Links to the last known location of the vault.
+./skel/              Contents Copied into new vaults at inception if it exists
+./skel/.bash_logout  Default pre-seed file.
+./skel/.bash_login   Default pre-seed file.
+===================  =========================================================
 
 By default, keys are stored as root  ./keys realative to the location of the squashlock script.
 
@@ -52,30 +61,32 @@ It's a good idea to back these up from time to time.  Using an existing vault sh
 provided ./keys/user-key exists realtive to the script on the machine you envoke from.  If your
 $USER changes, you will have to rename the key as per-user squashlock images key off of the
 SUDO_USER environmental var with globbing.  ie: my vault is rferguson-*.squashlock etc. Of course
-you will aslo need the password, linux, openssl, bash, and sudo.
+you will aslo need the password, linux, openssl, bash, and sudo. Git will also be required if you
+want to take advantage of automatic revision control via .bash_(login|logout).
 
-Additionally a few default files are added inside of the vault.
+The pre-seed files created at initialization are itemized below.
 
-============  =========================================================
-  InVault                  Description
-============  =========================================================
-./INFO        General info from creation time.
-./.bashrc     Initial version generated automatically.
-./.pub        The RSA public key for resquashing / encrypting.
-============  =========================================================
+==============   =========================================================  =========
+  InVault                  Description                                       Source
+==============   =========================================================  =========
+./INFO           General info gathered at initialization.                   generated
+./.bash_logout   Automatic git checkin inside squashfs.                     .skel/
+./.bash_login    Provides runhome alias and other aliases for commands      .skel/
+                 that expect real $HOME and autogit/logout setting.         generated
+./.pub           The RSA public key for resquashing / encrypting.           generated
+==============   =========================================================  =========
 
-The default bashrc can be modified in the vault or overriden in skel/ contents.
-
-The public key in the vault is own by root to prevent accidental deletion. It can also be 
-regenerated from the private if needed provided if you have the password.
+Modifications to the preseed files are persistent in each vault and defaults from ./skel can
+be modified. The public key in the vault is own by root to prevent accidental deletion.
+It can also be regenerated from the private via openssl if you have the password.
 
 
 External App Note
 -----------------
 
 While you have full connectivity and can run any program with any type of file in here, you can't
-be confident that a complex application isn't storing backups, histor or cache insecurely somewhere
-outside of the file in the squashlock path without doing your own research.
+be confident that a complex application isn't storing backups, history or cache insecurely
+somewhere outside of the file in the squashlock path without doing your own homework. 
 
 Usage
 -----
@@ -144,6 +155,7 @@ See Paths above for detail.
 * sudo
 * bash
 * openssl
+* git (recommended)
 
 .. code:: shell
 
@@ -156,6 +168,14 @@ See Paths above for detail.
   mkdir squashlock/skel
   echo DEFAULT_THING > squashlock/skel/put_this_in_new_vaults
 
+
+You may also want to modify sudoers to prevent double password prompting, once for sudo/system,
+and again to unlock the decryption key. Sudo requires the dereferenced path to the script, not any
+convenience symlink in PATH.
+
+.. code::
+
+  rferguson ALL=(ALL:ALL) NOPASSWD:/opt/squashlock/squashlock
 
 .. _Squashlock on github: https://github.com/devendor/squashlock
 
