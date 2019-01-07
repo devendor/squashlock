@@ -1,17 +1,17 @@
 #!/bin/bash
 # set -x ## Debugging will echo secrets
 
-if [ $(stat -L -c %u $0) -gt 0 ] || [ $(stat -L -c %g $0) -gt 100 ] ; then
-    echo "Security Error: Script should be owned by user/group root.\n\tsudo chown root.root $0"
+if [ "$(stat -L -c %u "$0")" -gt 0 ] || [ "$(stat -L -c %g "$0")" -gt 100 ] ; then
+    echo -e "Security Error: Script should be owned by user/group root.\n\tsudo chown root.root $0"
     exit 1
 fi
 
-if ! `stat -L -c %a $0 | grep -q '^[75][540][0]'`; then
+if ! grep -q '^[75][540][0]' <(stat -L -c %a "$0"); then
     echo -e "Security error:  Script permissions error. Please run\n\tsudo chmod g-w,o-rwx $0"
     exit 1
 fi
 
-if [ $(stat -L -c %u $PWD) -ne ${SUDO_UID:-$UID} ] ; then
+if [ "$(stat -L -c %u "$PWD")" -ne "${SUDO_UID:-$UID}" ] ; then
     echo "Security error: The target squashlock director must be owned by the calling user."
     exit 1
 fi
@@ -21,7 +21,7 @@ if [ $UID -ne 0 ] ; then
 fi
 
 if ! ${IS_CHILD:-false} ; then
-    env IS_CHILD=true unshare -fmp --mount-proc /bin/bash $0 $@
+    env IS_CHILD=true unshare -fmp --mount-proc /bin/bash "$0" "$@"
     exit $?
 fi
 
@@ -29,15 +29,15 @@ EXTERNAL_STORAGE_PREP_CMD=""
 EXTERNAL_STORAGE_TEARDOWN_CMD=""
 
 IMMUTABLE_IMAGES=false
-SCRIPT_DIR=$(dirname $(readlink -f $0))
-TOP_DIR=$(readlink -f ${PWD})
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+TOP_DIR=$(readlink -f "${PWD}")
 RUSER=${SUDO_USER:-$USER}
 EFFECTIVE_HOME=$( getent passwd "$RUSER" | cut -f6 -d: )
 RGID=$( getent passwd "$RUSER" | cut -f4 -d: )
 RUID=$( getent passwd "$RUSER" | cut -f3 -d: )
 RGECKOS=$( getent passwd "$RUSER" | cut -f5 -d: |sed 's/\,.*//' )
-BASE_DIR=$(basename $(readlink -f $PWD))
-if ! ID=`ls ${RUSER}*.squashlocked 2>/dev/null` ; then
+BASE_DIR=$(basename "$(readlink -f "$PWD")")
+if ! ID=$(ls "${RUSER}"*.squashlocked 2>/dev/null) ; then
    ID="${RUSER}_${BASE_DIR}_$(openssl rand -hex 16).squashlocked"
 fi
 ENCRYPT_KEY_PATH=${SCRIPT_DIR}/keys
@@ -63,10 +63,10 @@ RUN_USER_CMD="/usr/bin/sudo -E -u ${RUSER} /bin/bash -l"
 read -r -d '' INFO_TAG <<END_ID_FILE
 ########## PATH VALUES AT INCEPTION ###########
 # filesystem id:  $ID.
-# Created with:   $( readlink -f $0 )
+# Created with:   $( readlink -f "$0" )
 # Created at:     $(date)
 # Creator by:     $RGECKOS ${RUSER}@${HOSTNAME}
-# CRYPT_IMG_FILE: ${TOP_DIR}/$(basename ${CRYPT_IMG_FILE})
+# CRYPT_IMG_FILE: ${TOP_DIR}/$(basename "${CRYPT_IMG_FILE}")
 # SFKEY:          ${SFKEY}
 # PRIVATE_MOUNT:  ${PRIVATE_MOUNT}
 END_ID_FILE
@@ -77,38 +77,38 @@ setup_new_private(){
     while [ "${PASS:-NULL}" != "${VPASS:-LLUN}" ] ; do
         [ "$PASS" != "" ] && echo "Error. Passwords dont match"
         echo -ne "\nEnter password:" 1>&2
-        read -s PASS || exit 22
+        read -rs PASS || exit 22
         echo -ne "\nVerify password:" 1>&2
-        read -s VPASS || exit 22
+        read -rs VPASS || exit 22
         echo -ne "\n" 1>&2
     done
     unset VPASS
     echo "Generating keypair" 1>&2
-    echo $INFO_TAG > $SFKEY
-    PASS=$PASS openssl genpkey -algorithm rsa -aes256 -pkeyopt rsa_keygen_bits:4096 -pass env:PASS >> $SFKEY
+    echo "$INFO_TAG" > "$SFKEY"
+    env PASS="$PASS" openssl genpkey -algorithm rsa -aes256 -pkeyopt rsa_keygen_bits:4096 -pass env:PASS >> "$SFKEY"
     CN=$(echo "${ID}@$HOSTNAME"| cut -c 1-64)
-    echo PASS=$PASS openssl req -x509 -days 9999  -key $SFKEY -passin env:PASS -subj \
-       "/O=CRYPTCA/CN=$CN" -pubkey -out $SFPUB
-    PASS=$PASS openssl req -x509 -days 9999  -key $SFKEY -passin env:PASS -subj \
-       "/O=CRYPTCA/CN=$CN" -pubkey -out $SFPUB
+    echo "env PASS=xxxx openssl req -x509 -days 9999  -key $SFKEY -passin env:PASS -subj "\
+       "'/O=CRYPTCA/CN=$CN' -pubkey -out $SFPUB"
+    env PASS="$PASS" openssl req -x509 -days 9999  -key "$SFKEY" -passin env:PASS -subj \
+       "/O=CRYPTCA/CN=$CN" -pubkey -out "$SFPUB"
 
     unset PASS
 }
 
 re_squash_crypt(){
     # resquashes filesystem passes through pipe to encrypt
-    if `diff --no-dereference -rb $SHM_DIR/lower $PRIVATE_MOUNT 1>&2 `; then
+    if diff --no-dereference -rb "${SHM_DIR}/lower" "${PRIVATE_MOUNT}" 1>&2 ; then
         echo No changes in filesystem.  Skipping resquash.
     else
         echo Encrypting filesystem 1>&2
-        chattr -i $CRYPT_IMG_FILE
-        mv $CRYPT_IMG_FILE ${CRYPT_IMG_FILE}.bak
-        mksquashfs $PRIVATE_MOUNT $SHM_DIR/tmp.img  ||
-           clean_shm "${FUNCNAME} ${LINENO} Failed to create new squashfs." $LINENO
-        openssl smime -encrypt -binary -aes-256-cbc -in $SHM_DIR/tmp.img -out $CRYPT_IMG_FILE \
-           -outform DER -noverify $SFPUB || clean_shm "${FUNCNAME}: Error ${LINENO} Save failed." $LINENO
-        chown $RUID:$RGID $CRYPT_IMG_FILE
-        ${IMMUTABLE_IMAGES} && chattr +i $CRYPT_IMG_FILE
+        chattr -i "$CRYPT_IMG_FILE"
+        mv "$CRYPT_IMG_FILE" "${CRYPT_IMG_FILE}".bak
+        mksquashfs "$PRIVATE_MOUNT" "$SHM_DIR"/tmp.img  ||
+           clean_shm "${FUNCNAME[0]} ${LINENO} Failed to create new squashfs." $LINENO
+        openssl smime -encrypt -binary -aes-256-cbc -in "${SHM_DIR}/tmp.img" -out "$CRYPT_IMG_FILE" \
+           -outform DER -noverify "${SFPUB}" || clean_shm "${FUNCNAME[0]}: Error ${LINENO} Save failed." $LINENO
+        chown "${RUID}:${RGID}" "$CRYPT_IMG_FILE"
+        "${IMMUTABLE_IMAGES}" && chattr +i "$CRYPT_IMG_FILE"
     fi
 }
 
@@ -116,62 +116,62 @@ re_squash_crypt(){
 clean_shm(){
     msg="${1}"
     ercode=${2:-0}
-    if ${BREAK_ON_ERROR:-false} && [ $ercode -gt 0 ] ; then
+    if ${BREAK_ON_ERROR:-false} && [ "$ercode" -gt 0 ] ; then
         echo "BREAKING ON ERROR $msg $ercode"
         /bin/bash -i
     fi
     if ! $SKIP_CLEAN_ON_ERROR ; then
         for i in $PIVOT_DIR $PRIVATE_MOUNT ${SHM_DIR}/lower $SHM_DIR ; do
-            if `grep -q $i /proc/mounts` ; then
-                umount $i || umount --force --lazy $i || {
+            if grep -q "$i" /proc/mounts ; then
+                umount "$i" || umount --force --lazy "$i" || {
                    errstr="${msg}\nERROR CLEANING UP SHM $i"
                    ercode=$LINENO
                 }
             fi
         done
         sleep 2
-        rmdir $SHM_DIR $PIVOT_DIR ||  {
+        rmdir "$SHM_DIR" "$PIVOT_DIR" ||  {
                errstr="${msg}\nERROR removing temp directories $SHM_DIR $PIVOT_DIR"
                ercode=$LINENO
         }
     fi
-    echo ${msg:-Successfully closed squashlock fs.}
+    echo "${msg:-Successfully closed squashlock fs.}"
     return $ercode
 }
 
 open_private(){
-    mount -omode=750 -ttmpfs tmpfs $SHM_DIR ||
-     clean_shm "${FUNCNAME}: Error ${LINENO} Failed to mount tmpfs"
-    mount -o bind $PRIVATE_MOUNT $PIVOT_DIR ||
-     clean_shm "${FUNCNAME}: Error ${LINENO} Failed to mount pivot tmp"
-    mkdir -p ${SHM_DIR}/lower ${SHM_DIR}/work ${SHM_DIR}/upper
-    if [ -f $CRYPT_IMG_FILE ] ; then
+    mount -omode=750 -ttmpfs tmpfs "$SHM_DIR" ||
+     clean_shm "${FUNCNAME[0]}: Error ${LINENO} Failed to mount tmpfs"
+    mount -o bind "$PRIVATE_MOUNT" "$PIVOT_DIR" ||
+     clean_shm "${FUNCNAME[0]}: Error ${LINENO} Failed to mount pivot tmp"
+    mkdir -p "${SHM_DIR}/lower" "${SHM_DIR}/work" "${SHM_DIR}/upper"
+    if [ -f "$CRYPT_IMG_FILE" ] ; then
         echo Decrypting private image 1>&2
-        openssl smime -decrypt -binary -in $CRYPT_IMG_FILE -inform DER -inkey $SFKEY > $SHM_FILE ||
-           clean_shm "${FUNCNAME}: Error ${LINENO} Decrypt image $CRYPT_IMG_FILE failed" $LINENO
+        openssl smime -decrypt -binary -in "$CRYPT_IMG_FILE" -inform DER -inkey "$SFKEY" > "$SHM_FILE" ||
+           clean_shm "${FUNCNAME[0]}: Error ${LINENO} Decrypt image $CRYPT_IMG_FILE failed" $LINENO
     else
         echo INITIALIZING NEW PRIVATE FILESYSTEM 1>&2
         setup_new_private
-        echo "$INFO_TAG" >> $SHM_DIR/upper/INFO
-        [ -d ${SKEL:-NULL} ] && cp -a $SKEL/. $SHM_DIR/upper/. 2>/dev/null
-        cp -a $(ls -a | egrep -v '^(\.|\.\.|.*squashlocked.*)$') ${SHM_DIR}/upper/
-        chown -R ${RUID}:${RGID} ${SHM_DIR}/upper/
-        cp -a $SFPUB $SHM_DIR/upper/.pubkey
-        mksquashfs $SHM_DIR/work $SHM_FILE ||
-          clean_shm  "${FUNCNAME}: Error ${LINENO} creating initial filesystem" $LINENO
+        echo "$INFO_TAG" >> "${SHM_DIR}/upper/INFO"
+        [ -d "${SKEL:-NULL}" ] && cp -a "${SKEL}/." "${SHM_DIR}/upper/." 2>/dev/null
+        cp -a "$(ls -a | grep -Ev '^(\.|\.\.|.*squashlocked.*)$')" "${SHM_DIR}/upper/"
+        chown -R "${RUID}:${RGID}" "${SHM_DIR}/upper/"
+        cp -a "$SFPUB" "${SHM_DIR}/upper/.pubkey"
+        mksquashfs "${SHM_DIR}/work" "${SHM_FILE}" ||
+          clean_shm  "${FUNCNAME[0]}: Error ${LINENO} creating initial filesystem" $LINENO
     fi
-    mount -t squashfs -o loop,ro $SHM_FILE $SHM_DIR/lower ||
-        clean_shm  "${FUNCNAME}: Error ${LINENO} mounting $SHM_FILE to $SHM_DIR/lower" $LINENO
-    mount -toverlay -olowerdir=$SHM_DIR/lower,workdir=$SHM_DIR/work,upperdir=$SHM_DIR/upper \
-        overlay $PRIVATE_MOUNT || clean_shm  "${FUNCNAME}: Error ${LINENO} overlay filesystem mount failed" $LINENO
-    chown ${RUID}:${RGID} $PRIVATE_MOUNT
-    cp -a ${PRIVATE_MOUNT}/.pubkey $SFPUB
+    mount -t squashfs -o loop,ro "$SHM_FILE $SHM_DIR/lower" ||
+        clean_shm  "${FUNCNAME[0]}: Error ${LINENO} mounting $SHM_FILE to $SHM_DIR/lower" $LINENO
+    mount -toverlay "-olowerdir=${SHM_DIR}/lower,workdir=${SHM_DIR}/work,upperdir=${SHM_DIR}/upper" \
+        overlay "$PRIVATE_MOUNT" || clean_shm  "${FUNCNAME[0]}: Error ${LINENO} overlay filesystem mount failed" $LINENO
+    chown "${RUID}:${RGID}" "$PRIVATE_MOUNT"
+    cp -a "${PRIVATE_MOUNT}/.pubkey" "$SFPUB"
 }
 
 
 close_private(){
     start_ts=$(date +%s)
-    read -a  children </proc/$$/task/$$/children
+    read -ra  children </proc/$$/task/$$/children
     while [ ${#children[@]} -gt 0 ];
     do
         let timeout_in=${CLOSE_WAIT}+start_ts-$(date +%s)
@@ -188,15 +188,14 @@ close_private(){
             sleep 1
             break
         fi
-        read -a  children </proc/$$/task/$$/children
+        read -ra  children </proc/$$/task/$$/children
     done
     re_squash_crypt
-    umount $PRIVATE_MOUNT
-    if [ $? -gt 0 ] ; then
+    umount "$PRIVATE_MOUNT" || {
         echo "Warning: Have to force unmount $PRIVATE_MOUNT  Possible child process still working" 2>&1
-        umount --force --lazy $PRIVATE_MOUNT ||
-          clean_shm  "${FUNCNAME}: Error ${LINENO} Unmount $PRIVATE_MOUNT" $LINENO
-    fi
+        umount --force --lazy "$PRIVATE_MOUNT" ||
+          clean_shm  "${FUNCNAME[0]}: Error ${LINENO} Unmount $PRIVATE_MOUNT" $LINENO
+    }
     #openssl smime -encrypt -binary -aes-256-cbc -in $SHM_FILE -out $CRYPT_IMG_FILE -outform DER
     # -noverify $SFPUB || { echo "Error encrypting image.  Changes not saved" 1>&2
     clean_shm
@@ -211,24 +210,24 @@ ${EXTERNAL_STORAGE_PREP_CMD:-true} || {
 }
 
 for i in $ENCRYPT_KEY_PATH $HISTORY_PATH $PRIVATE_MOUNT $IMG_LINK_PATH; do
-    realpath -e $i/. >/dev/null || mkdir -p $i || { echo "Mkdir $i failed" ; exit $LINENO ; }
+    realpath -e "${i}/." >/dev/null || mkdir -p "$i" || { echo "Mkdir $i failed" ; exit $LINENO ; }
 done
 
 open_private &&
 /usr/bin/env -u SUDO_USER -u SUDO_UID -u SUDO_GID -u SUDO_COMMAND \
-   --chdir $PRIVATE_MOUNT LOGNAME=${RUSER} TMOUT=${TIMEOUT:-0} CASUBSHELL=true HOME=$PRIVATE_MOUNT USER=$RUSER \
-   $RUN_USER_CMD
+   --chdir "$PRIVATE_MOUNT" "LOGNAME=${RUSER}" "TMOUT=${TIMEOUT:-0}" CASUBSHELL=true "HOME=$PRIVATE_MOUNT" "USER=$RUSER" \
+   "$RUN_USER_CMD"
 close_private
 
 exit_code=$?
 
 stat -Lc "$(date +%s), mtime=%Y, u/g/m=%u/%g/%a, size=%s, path=${PRIVATE_MOUNT}, exit=${exit_code}"  \
-    "${PRIVATE_MOUNT}/${ID}"  >> $SFHIST
-ln -sf ${PRIVATE_MOUNT}/${ID} $IMG_LINK_PATH/
+    "${PRIVATE_MOUNT}/${ID}"  >> "$SFHIST"
+ln -sf "${PRIVATE_MOUNT}/${ID}" "${IMG_LINK_PATH}/"
 
 ${EXTERNAL_STORAGE_TEARDOWN_CMD:-true} || {
     echo "WARNING: EXTERNAL_TEARDOWN_CMD FAILED. STORAGE MAY STILL BE MOUNTED." 
-    df $ENCRYPT_KEY_PATH
+    df "$ENCRYPT_KEY_PATH"
     exit 4
 }
 
